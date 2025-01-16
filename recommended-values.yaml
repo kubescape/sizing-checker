@@ -1,0 +1,6 @@
+nodeAgent:
+  resources:
+    requests:
+      memory: 199Mi
+    limits:
+      memory: 795Mi
