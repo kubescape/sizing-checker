@@ -6,7 +6,7 @@ Kubescape Sizing Checker analyzes your Kubernetes cluster's resources and genera
 
 ## Prerequisites
 
-- **Kubeconfig** configured for access to the Kubernetes cluster where you plan to deploy Armo.
+- **Kubeconfig** configured for access to the Kubernetes cluster where you plan to deploy Kubescape Operator.
 
 ## Run the Check
 
