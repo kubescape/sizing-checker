@@ -46,7 +46,7 @@ func RunPVProvisioningCheck(
 
 	// 2) If all pre-checks pass, try a real creation of PVC + Pod
 	//    in an ephemeral namespace.
-	namespace := "armo-pv-check-ns"
+	namespace := "kubescape-pv-check-ns"
 	if err := createNamespace(ctx, clientset, namespace); err != nil {
 		return failResult(len(clusterData.Nodes),
 			fmt.Sprintf("Failed to create temporary namespace %q: %v", namespace, err))
@@ -59,8 +59,8 @@ func RunPVProvisioningCheck(
 		}
 	}()
 
-	pvcName := "armo-pv-check-pvc"
-	podName := "armo-pv-check-pod"
+	pvcName := "kubescape-pv-check-pvc"
+	podName := "kubescape-pv-check-pod"
 
 	// 2a) Create a 5Gi PVC, letting the cluster pick the default StorageClass.
 	if err := createTestPVC(ctx, clientset, namespace, pvcName, "5Gi"); err != nil {
