@@ -16,8 +16,8 @@ There are two ways to run the check:
 
 1. Navigate to the command directory and Execute the program:
    ```sh
-   git clone https://github.com/armosec/armo-platform-tools.git
-   cd armo-platform-tools/poc-prerequisite/
+   git clone https://github.com/kubescape/sizing-checker.git
+   cd sizing-checker/
    go run ./cmd/checker
    ```
 
