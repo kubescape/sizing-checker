@@ -5,9 +5,9 @@ import (
 	"flag"
 	"log"
 
-	"github.com/armosec/armo-platform-tools/poc-prerequisite/pkg/checks/pvcheck"
-	"github.com/armosec/armo-platform-tools/poc-prerequisite/pkg/checks/sizing"
-	"github.com/armosec/armo-platform-tools/poc-prerequisite/pkg/common"
+	"github.com/kubescape/sizing-checker/pkg/checks/pvcheck"
+	"github.com/kubescape/sizing-checker/pkg/checks/sizing"
+	"github.com/kubescape/sizing-checker/pkg/common"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// 2) Run checks
-	sizingResult := sizing.RunSizingChecker(ctx, clientset, clusterData)
+	sizingResult := sizing.RunSizingChecker(clusterData)
 
 	// Conditionally run resource-deploying checks
 	var pvResult *pvcheck.PVCheckResult

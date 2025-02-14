@@ -1,14 +1,10 @@
-// pkg/checks/sizing/sizing.go
 package sizing
 
 import (
-	"context"
-
-	"github.com/armosec/armo-platform-tools/poc-prerequisite/pkg/common"
-	"k8s.io/client-go/kubernetes"
+	"github.com/kubescape/sizing-checker/pkg/common"
 )
 
-func RunSizingChecker(ctx context.Context, clientset *kubernetes.Clientset, data *common.ClusterData) *common.SizingResult {
+func RunSizingChecker(data *common.ClusterData) *common.SizingResult {
 	totalResources := countAllResources(data)
 	maxCPU, maxMem, largestImageMB := getNodeStats(data)
 

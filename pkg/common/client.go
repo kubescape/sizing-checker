@@ -1,4 +1,3 @@
-// pkg/common/client.go
 package common
 
 import (
