@@ -147,7 +147,7 @@
       align-items: center;
       background: #e7f3fe;
       border: 1px solid #b3d4fc;
-      padding: 15px;
+      padding: 8px;
       border-radius: 8px;
       color: #31708f;
       margin: 15px 0;
@@ -179,6 +179,17 @@
       padding: 20px;
       border-radius: 8px;
       border: 1px solid #c8e6c9;
+    }
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #2e7d32;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .download-link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -292,7 +303,14 @@
           <div class="adjustments-right">
             <h3>Apply Adjustments</h3>
             <p>
-              Deploy optimized Helm values via recommended-values.yaml to boost performance.
+              Download the optimized Helm configuration:
+              <a href="./recommended-values.yaml" download class="download-link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#2e7d32" viewBox="0 0 24 24">
+                  <path d="M5 20h14v-2H5v2z"/>
+                  <path d="M13 4h-2v9H8l4 4 4-4h-3z"/>
+                </svg>
+                recommended-values.yaml
+              </a>
             </p>
           </div>
         </div>
