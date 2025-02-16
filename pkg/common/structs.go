@@ -4,6 +4,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+
+	storagev1 "k8s.io/api/storage/v1"
 )
 
 type SizingResult struct {
@@ -53,6 +55,8 @@ type ClusterData struct {
 	Jobs         []batchv1.Job
 	CronJobs     []batchv1.CronJob
 
+	StorageClasses []storagev1.StorageClass
+
 	ClusterDetails    ClusterDetails
 	NodeInfoSummaries NodeInfoSummary
 }
@@ -86,4 +90,5 @@ type ReportData struct {
 	FullClusterData *ClusterData
 
 	PVProvisioningMessage string
+	ActiveCheckNote       bool
 }

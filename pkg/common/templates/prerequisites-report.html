@@ -14,7 +14,7 @@
     body {
       font-family: 'Roboto', Arial, sans-serif;
       margin: 0;
-      background: #f9f9f9; /* restored previous background color */
+      background: #f9f9f9;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -65,12 +65,11 @@
       padding-bottom: 10px;
     }
 
-    /* Updated subtitle style for a nicer look and more compact spacing */
     h3 {
       font-size: 18px;
       color: #2e3f6e;
       font-weight: 500;
-      margin: 5px 0 8px 0;  /* reduced spacing */
+      margin: 5px 0 8px 0;
       padding-bottom: 4px;
       border-bottom: 1px solid #2e3f6e;
     }
@@ -102,7 +101,6 @@
       overflow-x: auto;
     }
 
-    /* Summary Frames Layout */
     .summary-frames {
       display: flex;
       gap: 20px;
@@ -142,6 +140,46 @@
     a:hover {
       text-decoration: underline;
     }
+
+    /* Info frame styling */
+    .info-frame {
+      display: flex;
+      align-items: center;
+      background: #e7f3fe;
+      border: 1px solid #b3d4fc;
+      padding: 15px;
+      border-radius: 8px;
+      color: #31708f;
+      margin: 15px 0;
+    }
+    .info-icon {
+      font-size: 24px;
+      margin-right: 10px;
+    }
+    .info-message {
+      font-size: 15px;
+    }
+
+    /* Recommended Adjustments layout */
+    .recommended-adjustments-container {
+      display: flex;
+      gap: 20px;
+    }
+    .adjustments-left {
+      flex: 0 0 33%;
+      background: #fafafa;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e5e5e5;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    }
+    .adjustments-right {
+      flex: 1;
+      background: #e8f5e9;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #c8e6c9;
+    }
   </style>
 </head>
 <body>
@@ -158,7 +196,6 @@
     <section>
       <h2 class="main-title">Summary</h2>
       <div class="summary-frames">
-        <!-- Cluster Details Frame -->
         <div class="summary-frame">
           <h3>Cluster Details</h3>
           <ul>
@@ -170,7 +207,6 @@
           </ul>
         </div>
 
-        <!-- Nodes Configuration Frame -->
         <div class="summary-frame">
           <h3>Nodes Configuration</h3>
           <ul>
@@ -184,7 +220,6 @@
           </ul>
         </div>
 
-        <!-- Resources Frame -->
         <div class="summary-frame">
           <h3>Resources</h3>
           <ul>
@@ -202,53 +237,65 @@
       <h2 class="main-title">Checks Results</h2>
       <ul>
         <li>
-          <strong>PV Provisioning Check:</strong>
+          <strong>PV Provisioning Check: </strong>
           {{- if eq .PVProvisioningMessage "Passed" -}}
-            <span style="color: darkgreen;"> {{.PVProvisioningMessage}}</span>
+            <span style="color: darkgreen;">{{.PVProvisioningMessage}}</span>
           {{- else if eq .PVProvisioningMessage "Failed" -}}
-            <span style="color: darkred;"> {{.PVProvisioningMessage}}</span>
+            <span style="color: darkred;">{{.PVProvisioningMessage}}</span>
           {{- else -}}
-            <span style="color: darkorange;"> {{.PVProvisioningMessage}}</span>
+            <span style="color: darkorange;">{{.PVProvisioningMessage}}</span>
           {{- end}}
         </li>
       </ul>
-    </section>
     
+      {{ if .ActiveCheckNote }}
+        <div class="info-frame">
+          <div class="info-icon">&#8505;</div>
+          <div class="info-message">
+            Only basic checks performed. For full testing (including workload deployments), rerun with <span style="font-style: italic; color: #008000;">--active-checks</span>.
+          </div>
+        </div>
+      {{ end }}
+    </section>
+        
     <!-- Recommended Adjustments -->
     <section>
       <h2 class="main-title">Recommended Adjustments</h2>
       {{ if not .HasAnyAdjustments }}
         <p>No adjustments are needed.</p>
       {{ else }}
-        <h3>Resource Allocations</h3>
-        {{ range $component, $finalsMap := .FinalResourceAllocations }}
-          {{ $defaultsMap := index $.DefaultResourceAllocations $component }}
-          {{ $noChanges := true }}
-          {{ range $resKey, $finalVal := $finalsMap }}
-            {{ $defaultVal := index $defaultsMap $resKey }}
-            {{ if ne $defaultVal $finalVal }}
-              {{ $noChanges = false }}
-            {{ end }}
-          {{ end }}
-          {{ if not $noChanges }}
-            <h4>{{ $component }}</h4>
-            <ul>
+        <div class="recommended-adjustments-container">
+          <div class="adjustments-left">
+            <h3>Resource Allocations</h3>
+            {{ range $component, $finalsMap := .FinalResourceAllocations }}
+              {{ $defaultsMap := index $.DefaultResourceAllocations $component }}
+              {{ $noChanges := true }}
               {{ range $resKey, $finalVal := $finalsMap }}
                 {{ $defaultVal := index $defaultsMap $resKey }}
                 {{ if ne $defaultVal $finalVal }}
-                  <li><strong>{{ $resKey }}:</strong> {{ $finalVal }}</li>
+                  {{ $noChanges = false }}
                 {{ end }}
               {{ end }}
-            </ul>
-          {{ end }}
-        {{ end }}
-
-        <h3>Apply Adjustments</h3>
-        <p>
-          Use the generated
-          <a href="./recommended-values.yaml" target="_blank">recommended-values.yaml</a>
-          to optimize Kubescape for your cluster.
-        </p>
+              {{ if not $noChanges }}
+                <h4>{{ $component }}</h4>
+                <ul>
+                  {{ range $resKey, $finalVal := $finalsMap }}
+                    {{ $defaultVal := index $defaultsMap $resKey }}
+                    {{ if ne $defaultVal $finalVal }}
+                      <li><strong>{{ $resKey }}:</strong> {{ $finalVal }}</li>
+                    {{ end }}
+                  {{ end }}
+                </ul>
+              {{ end }}
+            {{ end }}
+          </div>
+          <div class="adjustments-right">
+            <h3>Apply Adjustments</h3>
+            <p>
+              Deploy optimized Helm values via recommended-values.yaml to boost performance.
+            </p>
+          </div>
+        </div>
       {{ end }}
     </section>
   </div>

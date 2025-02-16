@@ -99,6 +99,13 @@ func CollectClusterData(ctx context.Context, clientset *kubernetes.Clientset) (*
 	}
 	cd.CronJobs = cronjobs.Items
 
+	storageClasses, err := clientset.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		log.Printf("Failed to list storageclasses: %v", err)
+		return cd, err
+	}
+	cd.StorageClasses = storageClasses.Items
+
 	stripManagedFields(cd)
 
 	return cd, nil
