@@ -254,7 +254,7 @@
         <!-- Sizing Check -->
         <li>
           <strong>Sizing Check: </strong>
-          {{- if .HasAnyAdjustments }}
+          {{- if .HasSizingAdjustments }}
             <span style="color: purple;">Adjustments recommended</span>
           {{- else }}
             <span style="color: darkgreen;">Passed</span>
@@ -291,14 +291,14 @@
       Show this section ONLY if at least one check is "Adjustments recommended". 
       If both are "Passed" or "Failed" => Hide entire section 
     */}}
-    {{ $showAdjustments := or ( .HasAnyAdjustments ) (eq .PVProvisioningMessage "Failed") }}
+    {{ $showAdjustments := or ( .HasSizingAdjustments ) (eq .PVProvisioningMessage "Failed") }}
     {{ if $showAdjustments }}
       <section>
         <h2 class="main-title">Recommended Adjustments</h2>
         <div class="adjustments-container">
           
           {{/* If Sizing check has "Adjustments recommended", show Resource Allocations in a gray frame */}}
-          {{ if .HasAnyAdjustments }}
+          {{ if .HasSizingAdjustments }}
             <div class="gray-frame">
               <h3>Resource Allocations</h3>
               {{ range $component, $finalsMap := .FinalResourceAllocations }}

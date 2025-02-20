@@ -37,7 +37,7 @@ func RunSizingChecker(data *common.ClusterData) *common.SizingResult {
 		LargestContainerImageMB:    largestImageMB,
 		DefaultResourceAllocations: defaultResourceAllocations,
 		FinalResourceAllocations:   finalResourceAllocations,
-		HasAnyAdjustments:          computeHasAnyAdjustments(defaultResourceAllocations, finalResourceAllocations),
+		HasSizingAdjustments:       computeHasSizingAdjustments(defaultResourceAllocations, finalResourceAllocations),
 	}
 }
 
@@ -74,7 +74,7 @@ func getNodeStats(cd *common.ClusterData) (int, int, int) {
 	return int(maxCPU), int(maxMem), int(largestImageBytes / (1024 * 1024))
 }
 
-func computeHasAnyAdjustments(defaults, finals map[string]map[string]string) bool {
+func computeHasSizingAdjustments(defaults, finals map[string]map[string]string) bool {
 	for comp, defMap := range defaults {
 		finalMap, ok := finals[comp]
 		if !ok {

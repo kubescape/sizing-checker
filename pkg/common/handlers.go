@@ -18,7 +18,7 @@ func BuildReportData(cd *ClusterData, sr *SizingResult) *ReportData {
 		LargestContainerImageMB:    sr.LargestContainerImageMB,
 		DefaultResourceAllocations: sr.DefaultResourceAllocations,
 		FinalResourceAllocations:   sr.FinalResourceAllocations,
-		HasAnyAdjustments:          sr.HasAnyAdjustments,
+		HasSizingAdjustments:       sr.HasSizingAdjustments,
 
 		KubernetesVersion: cd.ClusterDetails.Version,
 		CloudProvider:     cd.ClusterDetails.CloudProvider,

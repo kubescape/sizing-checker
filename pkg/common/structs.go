@@ -20,7 +20,7 @@ type SizingResult struct {
 	DefaultResourceAllocations map[string]map[string]string
 
 	// Whether any resource changed from default
-	HasAnyAdjustments bool
+	HasSizingAdjustments bool
 }
 
 type NodeInfoSummary struct {
@@ -76,8 +76,8 @@ type ReportData struct {
 	TotalNodeCount    int
 	TotalVCPUCount    int
 
-	GenerationTime    string
-	HasAnyAdjustments bool
+	GenerationTime       string
+	HasSizingAdjustments bool
 
 	NodeOSSummary               string
 	NodeArchSummary             string
