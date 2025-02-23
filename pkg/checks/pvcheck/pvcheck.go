@@ -21,20 +21,47 @@ const (
 	noProvisioner              = "kubernetes.io/no-provisioner"
 )
 
-// PVCheckResult is a minimal struct containing pass/fail info.
-type PVCheckResult struct {
-	PassedCount   int
-	FailedCount   int
-	TotalNodes    int
-	ResultMessage string // "Passed", "Failed", or "Skipped"
-}
-
-// RunPVProvisioningCheck does the real creation of PVC + Pod in a temporary namespace.
+// RunPVProvisioningCheck decides if we run a full test with PVC/Pod creation or just a basic check.
 func RunPVProvisioningCheck(
 	ctx context.Context,
 	clientset *kubernetes.Clientset,
 	clusterData *common.ClusterData,
-) *PVCheckResult {
+	activeChecks *bool,
+) *common.PVCheckResult {
+
+	if *activeChecks {
+		// Full test with PVC + Pod creation
+		return runFullProvisioningTest(ctx, clientset, clusterData)
+	}
+
+	// Only run the basic pre-check:
+	passed, failReason := BasicPreCheck(ctx, clientset, clusterData)
+	if passed {
+		// Basic check passed => "Passed"
+		return &common.PVCheckResult{
+			PassedCount:   len(clusterData.Nodes),
+			FailedCount:   0,
+			TotalNodes:    len(clusterData.Nodes),
+			ResultMessage: "Passed",
+		}
+	}
+
+	// Basic check failed => "Failed"
+	log.Printf("Basic PV check failed: %s", failReason)
+	return &common.PVCheckResult{
+		PassedCount:   0,
+		FailedCount:   len(clusterData.Nodes),
+		TotalNodes:    len(clusterData.Nodes),
+		ResultMessage: "Failed",
+	}
+}
+
+// runFullProvisioningTest does the real creation of PVC + Pod in a temporary namespace.
+func runFullProvisioningTest(
+	ctx context.Context,
+	clientset *kubernetes.Clientset,
+	clusterData *common.ClusterData,
+) *common.PVCheckResult {
 
 	// 1) Pre-checks for dynamic provisioning
 	passed, failReason := BasicPreCheck(ctx, clientset, clusterData)
@@ -42,11 +69,13 @@ func RunPVProvisioningCheck(
 		return failResult(len(clusterData.Nodes), failReason)
 	}
 
-	// 2) If all pre-checks pass, try a real creation of PVC + Pod in an ephemeral namespace.
+	// 2) If pre-check passes, try a real creation of PVC + Pod in ephemeral namespace
 	namespace := "kubescape-pv-check-ns"
 	if err := createNamespace(ctx, clientset, namespace); err != nil {
-		return failResult(len(clusterData.Nodes),
-			fmt.Sprintf("Failed to create temporary namespace %q: %v", namespace, err))
+		return failResult(
+			len(clusterData.Nodes),
+			fmt.Sprintf("Failed to create temporary namespace %q: %v", namespace, err),
+		)
 	}
 
 	// Ensure cleanup:
@@ -61,30 +90,26 @@ func RunPVProvisioningCheck(
 
 	// 2a) Create a 5Gi PVC, letting the cluster pick the default StorageClass
 	if err := createTestPVC(ctx, clientset, namespace, pvcName, "5Gi"); err != nil {
-		return failResult(len(clusterData.Nodes),
-			fmt.Sprintf("Failed to create PVC: %v", err))
+		return failResult(len(clusterData.Nodes), fmt.Sprintf("Failed to create PVC: %v", err))
 	}
 
 	// 2b) Create a Pod that references the PVC
 	if err := createTestPod(ctx, clientset, namespace, podName, pvcName); err != nil {
-		return failResult(len(clusterData.Nodes),
-			fmt.Sprintf("Failed to create Pod: %v", err))
+		return failResult(len(clusterData.Nodes), fmt.Sprintf("Failed to create Pod: %v", err))
 	}
 
 	// 2c) Wait for the PVC to be Bound
 	if err := waitForPVCBound(ctx, clientset, namespace, pvcName, 60*time.Second); err != nil {
-		return failResult(len(clusterData.Nodes),
-			fmt.Sprintf("PVC did not become Bound: %v", err))
+		return failResult(len(clusterData.Nodes), fmt.Sprintf("PVC did not become Bound: %v", err))
 	}
 
 	// 2d) Wait for the Pod to become Running or Succeeded
 	if err := waitForPodRunningOrSucceeded(ctx, clientset, namespace, podName, 60*time.Second); err != nil {
-		return failResult(len(clusterData.Nodes),
-			fmt.Sprintf("Pod did not become Running/Succeeded: %v", err))
+		return failResult(len(clusterData.Nodes), fmt.Sprintf("Pod did not become Running/Succeeded: %v", err))
 	}
 
 	// 3) If everything was successful => "Passed"
-	return &PVCheckResult{
+	return &common.PVCheckResult{
 		PassedCount:   len(clusterData.Nodes),
 		FailedCount:   0,
 		TotalNodes:    len(clusterData.Nodes),
@@ -163,9 +188,7 @@ func isStorageClassDefault(sc *storagev1.StorageClass) bool {
 	return false
 }
 
-// ---------------------------------------------------------------------
-// Resource creation/waiting
-// ---------------------------------------------------------------------
+// createNamespace creates a temporary namespace.
 func createNamespace(ctx context.Context, clientset *kubernetes.Clientset, name string) error {
 	nsObj := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -176,6 +199,7 @@ func createNamespace(ctx context.Context, clientset *kubernetes.Clientset, name 
 	return err
 }
 
+// createTestPVC creates a test PVC of the given size.
 func createTestPVC(ctx context.Context, clientset *kubernetes.Clientset, namespace, pvcName, size string) error {
 	qty, err := resource.ParseQuantity(size)
 	if err != nil {
@@ -200,6 +224,7 @@ func createTestPVC(ctx context.Context, clientset *kubernetes.Clientset, namespa
 	return createErr
 }
 
+// createTestPod creates a pod referencing the PVC.
 func createTestPod(ctx context.Context, clientset *kubernetes.Clientset, namespace, podName, pvcName string) error {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -235,6 +260,7 @@ func createTestPod(ctx context.Context, clientset *kubernetes.Clientset, namespa
 	return err
 }
 
+// waitForPVCBound waits until the PVC transitions to Bound or times out.
 func waitForPVCBound(ctx context.Context, clientset *kubernetes.Clientset, ns, pvcName string, timeout time.Duration) error {
 	return wait.PollImmediate(3*time.Second, timeout, func() (bool, error) {
 		pvc, err := clientset.CoreV1().PersistentVolumeClaims(ns).Get(ctx, pvcName, metav1.GetOptions{})
@@ -248,6 +274,7 @@ func waitForPVCBound(ctx context.Context, clientset *kubernetes.Clientset, ns, p
 	})
 }
 
+// waitForPodRunningOrSucceeded waits until the pod runs or succeeds, or times out.
 func waitForPodRunningOrSucceeded(ctx context.Context, clientset *kubernetes.Clientset, ns, podName string, timeout time.Duration) error {
 	return wait.PollImmediate(3*time.Second, timeout, func() (bool, error) {
 		pod, err := clientset.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
@@ -265,13 +292,15 @@ func waitForPodRunningOrSucceeded(ctx context.Context, clientset *kubernetes.Cli
 	})
 }
 
+// deleteNamespace removes the temporary namespace.
 func deleteNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns string) error {
 	return clientset.CoreV1().Namespaces().Delete(ctx, ns, metav1.DeleteOptions{})
 }
 
-func failResult(totalNodes int, reason string) *PVCheckResult {
+// failResult is a helper to generate a PVCheckResult with "Failed".
+func failResult(totalNodes int, reason string) *common.PVCheckResult {
 	log.Printf("Dynamic PV check failed: %s", reason)
-	return &PVCheckResult{
+	return &common.PVCheckResult{
 		PassedCount:   0,
 		FailedCount:   totalNodes,
 		TotalNodes:    totalNodes,

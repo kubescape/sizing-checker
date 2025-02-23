@@ -23,6 +23,13 @@ type SizingResult struct {
 	HasSizingAdjustments bool
 }
 
+type PVCheckResult struct {
+	PassedCount   int
+	FailedCount   int
+	TotalNodes    int
+	ResultMessage string // "Passed", "Failed", or "Skipped"
+}
+
 type NodeInfoSummary struct {
 	OperatingSystemCounts         map[string]int
 	ArchitectureCounts            map[string]int

@@ -23,7 +23,7 @@ func CollectClusterData(ctx context.Context, clientset *kubernetes.Clientset) (*
 	// 2) List nodes
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		log.Printf("Failed to list nodes: %v", err)
+		log.Fatalf("Failed to list nodes: %v", err)
 		return cd, err
 	}
 	cd.Nodes = nodes.Items

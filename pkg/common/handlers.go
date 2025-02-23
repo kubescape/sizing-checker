@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func BuildReportData(cd *ClusterData, sr *SizingResult) *ReportData {
+func BuildReportData(cd *ClusterData, sr *SizingResult, pr *PVCheckResult) *ReportData {
 	report := &ReportData{
 		// existing merges:
 		TotalResources:             sr.TotalResources,
@@ -28,6 +28,8 @@ func BuildReportData(cd *ClusterData, sr *SizingResult) *ReportData {
 
 		GenerationTime:  time.Now().Format("2006-01-02 15:04:05"),
 		FullClusterData: cd,
+
+		PVProvisioningMessage: pr.ResultMessage,
 	}
 
 	// Now populate the node info summary fields:
