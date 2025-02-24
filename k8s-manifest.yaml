@@ -22,7 +22,9 @@ rules:
   - apiGroups: ["batch"]
     resources: ["jobs", "cronjobs"]
     verbs: ["list"]
-
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["list"]
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["create", "update", "get"]
@@ -62,6 +64,9 @@ spec:
         - name: kubescape-prerequisite
           image: "quay.io/danvid/kubescape-prerequisite"
           imagePullPolicy: Always
+          env:
+            - name: CONNECTIVITY_TARGETS
+              value: ""
           resources:
             requests:
               memory: "256Mi"

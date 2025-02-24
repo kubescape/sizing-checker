@@ -8,6 +8,12 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 )
 
+type ConnectivityCheckResult struct {
+	AddressesTested []string
+	SuccessCount    int
+	ResultMessage   string // "Passed", "Failed", "Partial success (X/Y)", or "Skipped"
+}
+
 type SizingResult struct {
 	TotalResources          int
 	MaxNodeCPUCapacity      int
@@ -96,6 +102,7 @@ type ReportData struct {
 
 	FullClusterData *ClusterData
 
-	PVProvisioningMessage string
-	ActiveCheckNote       bool
+	PVProvisioningMessage    string
+	ConnectivityCheckMessage string
+	ActiveCheckNote          bool
 }

@@ -9,9 +9,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func BuildReportData(cd *ClusterData, sr *SizingResult, pr *PVCheckResult) *ReportData {
+func BuildReportData(cd *ClusterData,
+	sr *SizingResult,
+	pr *PVCheckResult,
+	ccr *ConnectivityCheckResult,
+) *ReportData {
+
 	report := &ReportData{
-		// existing merges:
+		// Sizing data
 		TotalResources:             sr.TotalResources,
 		MaxNodeCPUCapacity:         sr.MaxNodeCPUCapacity,
 		MaxNodeMemoryMB:            sr.MaxNodeMemoryMB,
@@ -20,6 +25,7 @@ func BuildReportData(cd *ClusterData, sr *SizingResult, pr *PVCheckResult) *Repo
 		FinalResourceAllocations:   sr.FinalResourceAllocations,
 		HasSizingAdjustments:       sr.HasSizingAdjustments,
 
+		// Basic cluster details
 		KubernetesVersion: cd.ClusterDetails.Version,
 		CloudProvider:     cd.ClusterDetails.CloudProvider,
 		K8sDistribution:   cd.ClusterDetails.K8sDistribution,
@@ -29,10 +35,11 @@ func BuildReportData(cd *ClusterData, sr *SizingResult, pr *PVCheckResult) *Repo
 		GenerationTime:  time.Now().Format("2006-01-02 15:04:05"),
 		FullClusterData: cd,
 
-		PVProvisioningMessage: pr.ResultMessage,
+		PVProvisioningMessage:    pr.ResultMessage,
+		ConnectivityCheckMessage: ccr.ResultMessage,
 	}
 
-	// Now populate the node info summary fields:
+	// Node info summaries
 	totalNodes := cd.ClusterDetails.TotalNodeCount
 	ni := cd.NodeInfoSummaries
 
@@ -59,10 +66,20 @@ func BuildFullDumpYAML(cd *ClusterData) string {
 }
 
 func BuildHTMLReport(data *ReportData, tpl string) string {
-	tmpl, err := template.New("report").Parse(tpl)
+	// Create a FuncMap and include any functions you want to use in your template
+	funcMap := template.FuncMap{
+		"hasPrefix": strings.HasPrefix,
+		// you can add more functions here if needed
+	}
+
+	// Parse your template with FuncMap
+	tmpl, err := template.New("report").
+		Funcs(funcMap).
+		Parse(tpl)
 	if err != nil {
 		return fmt.Sprintf("Error building report: %v", err)
 	}
+
 	var sb strings.Builder
 	if err := tmpl.Execute(&sb, data); err != nil {
 		return fmt.Sprintf("Error rendering template: %v", err)

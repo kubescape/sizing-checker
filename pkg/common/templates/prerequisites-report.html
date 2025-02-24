@@ -272,7 +272,21 @@
             <span style="color: darkorange;">{{.PVProvisioningMessage}}</span>
           {{- end}}
         </li>
-      </ul>
+
+        <!-- Connectivity Check -->
+        <li>
+          <strong>Connectivity Check: </strong>
+          {{- if eq .ConnectivityCheckMessage "Passed" -}}
+            <span style="color: darkgreen;">{{.ConnectivityCheckMessage}}</span>
+          {{- else if or (eq .ConnectivityCheckMessage "Failed") (hasPrefix .ConnectivityCheckMessage "Partial") -}}
+            <span style="color: purple;">Adjustments recommended</span>
+          {{- else if eq .ConnectivityCheckMessage "Skipped" -}}
+            <span style="color: darkorange;">{{.ConnectivityCheckMessage}}</span>
+          {{- else -}}
+            <span>{{.ConnectivityCheckMessage}}</span>
+          {{- end}}
+        </li>
+        </ul>
     
       <!-- Optional note if only basic checks were done -->
       {{ if .ActiveCheckNote }}
