@@ -12,7 +12,7 @@ import (
 func BuildReportData(cd *ClusterData,
 	sr *SizingResult,
 	pr *PVCheckResult,
-	ccr *ConnectivityCheckResult,
+	ccr *ConnectivityResult,
 ) *ReportData {
 
 	report := &ReportData{

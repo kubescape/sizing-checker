@@ -14,10 +14,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func RunConnectivityChecks(ctx context.Context, clientset *kubernetes.Clientset, clusterData *common.ClusterData, inCluster bool) *common.ConnectivityCheckResult {
+func RunConnectivityChecks(ctx context.Context, clientset *kubernetes.Clientset, clusterData *common.ClusterData, inCluster bool) *common.ConnectivityResult {
 	// If not running in-cluster, skip this check entirely.
 	if !inCluster {
-		return &common.ConnectivityCheckResult{
+		return &common.ConnectivityResult{
 			AddressesTested: nil,
 			SuccessCount:    0,
 			ResultMessage:   "Skipped",
@@ -62,7 +62,7 @@ func RunConnectivityChecks(ctx context.Context, clientset *kubernetes.Clientset,
 		resultMsg = fmt.Sprintf("Partial success (%d/%d)", successCount, len(targets))
 	}
 
-	return &common.ConnectivityCheckResult{
+	return &common.ConnectivityResult{
 		AddressesTested: targets,
 		SuccessCount:    successCount,
 		ResultMessage:   resultMsg,

@@ -8,7 +8,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 )
 
-type ConnectivityCheckResult struct {
+type ConnectivityResult struct {
 	AddressesTested []string
 	SuccessCount    int
 	ResultMessage   string // "Passed", "Failed", "Partial success (X/Y)", or "Skipped"
