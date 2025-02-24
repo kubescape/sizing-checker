@@ -64,6 +64,9 @@ spec:
         - name: kubescape-prerequisite
           image: "quay.io/danvid/kubescape-prerequisite"
           imagePullPolicy: Always
+          volumeMounts:
+          - mountPath: /boot
+            name: boot
           env:
             - name: CONNECTIVITY_TARGETS
               value: ""
@@ -74,3 +77,7 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+      volumes:
+      - name: boot
+        hostPath:
+          path: /boot

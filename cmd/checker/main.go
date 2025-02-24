@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/kubescape/sizing-checker/pkg/checks/connectivity"
+	"github.com/kubescape/sizing-checker/pkg/checks/ebpfcheck"
 	"github.com/kubescape/sizing-checker/pkg/checks/pvcheck"
 	"github.com/kubescape/sizing-checker/pkg/checks/sizing"
 	"github.com/kubescape/sizing-checker/pkg/common"
@@ -33,9 +34,10 @@ func main() {
 	sizingResult := sizing.RunSizingChecker(clusterData)
 	pvResult := pvcheck.RunPVProvisioningCheck(ctx, clientset, clusterData, activeChecks)
 	connectivityResult := connectivity.RunConnectivityChecks(ctx, clientset, clusterData, inCluster)
+	ebpfResult := ebpfcheck.RunEbpfCheck(ctx, clientset, clusterData, inCluster)
 
 	// 3) Build and export the final ReportData
-	finalReport := common.BuildReportData(clusterData, sizingResult, pvResult, connectivityResult)
+	finalReport := common.BuildReportData(clusterData, sizingResult, pvResult, connectivityResult, ebpfResult)
 
 	// If NOT using --active-checks, add a note to the HTML to clarify
 	if !*activeChecks {

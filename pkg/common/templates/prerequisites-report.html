@@ -286,7 +286,23 @@
             <span>{{.ConnectivityCheckMessage}}</span>
           {{- end}}
         </li>
-        </ul>
+
+        <!-- eBPF Check -->
+        <li>
+          <strong>eBPF Check: </strong>
+          {{- if eq .EBPFResultMessage "Passed" -}}
+            <span style="color: darkgreen;">{{.EBPFResultMessage}}</span>
+          {{- else if hasPrefix .EBPFResultMessage "Warning" -}}
+            <span style="color: darkorange;">{{.EBPFResultMessage}}</span>
+          {{- else if eq .EBPFResultMessage "Failed" -}}
+            <span style="color: purple;">{{.EBPFResultMessage}}</span>
+          {{- else -}}
+            <!-- fallback for other statuses -->
+            <span>{{.EBPFResultMessage}}</span>
+          {{- end}}
+        </li>
+
+      </ul>
     
       <!-- Optional note if only basic checks were done -->
       {{ if .ActiveCheckNote }}

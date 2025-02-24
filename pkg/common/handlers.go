@@ -9,10 +9,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func BuildReportData(cd *ClusterData,
+func BuildReportData(
+	cd *ClusterData,
 	sr *SizingResult,
 	pr *PVCheckResult,
 	ccr *ConnectivityResult,
+	er *EbpfResult,
 ) *ReportData {
 
 	report := &ReportData{
@@ -37,6 +39,8 @@ func BuildReportData(cd *ClusterData,
 
 		PVProvisioningMessage:    pr.ResultMessage,
 		ConnectivityCheckMessage: ccr.ResultMessage,
+
+		EBPFResultMessage: er.ResultMessage,
 	}
 
 	// Node info summaries
@@ -222,7 +226,7 @@ func summarizeMap(counts map[string]int, totalCount int) string {
 		}
 	}
 
-	// multiple distinct keys: "Linux (7), Windows (3)"
+	// multiple distinct keys: e.g. "Linux (7), Windows (3)"
 	var parts []string
 	for key, c := range counts {
 		parts = append(parts, fmt.Sprintf("%s (%d)", key, c))

@@ -4,7 +4,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-
 	storagev1 "k8s.io/api/storage/v1"
 )
 
@@ -56,7 +55,6 @@ type ClusterDetails struct {
 	TotalVCPUCount  int
 }
 
-// ClusterData aggregates everything we collect from the cluster.
 type ClusterData struct {
 	Nodes        []corev1.Node
 	Pods         []corev1.Pod
@@ -72,6 +70,10 @@ type ClusterData struct {
 
 	ClusterDetails    ClusterDetails
 	NodeInfoSummaries NodeInfoSummary
+}
+
+type EbpfResult struct {
+	ResultMessage string // "Passed", "Warning", "Failed", or any descriptive message
 }
 
 type ReportData struct {
@@ -104,5 +106,8 @@ type ReportData struct {
 
 	PVProvisioningMessage    string
 	ConnectivityCheckMessage string
-	ActiveCheckNote          bool
+
+	EBPFResultMessage string
+
+	ActiveCheckNote bool
 }
