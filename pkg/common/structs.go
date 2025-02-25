@@ -109,5 +109,5 @@ type ReportData struct {
 
 	EBPFResultMessage string
 
-	ActiveCheckNote bool
+	InCluster bool
 }

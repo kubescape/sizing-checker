@@ -62,7 +62,7 @@ spec:
       serviceAccountName: kubescape-prerequisite
       containers:
         - name: kubescape-prerequisite
-          image: "quay.io/danvid/kubescape-prerequisite"
+          image: "quay.io/danvid/kubescape-prerequisite:dev"
           imagePullPolicy: Always
           volumeMounts:
           - mountPath: /boot

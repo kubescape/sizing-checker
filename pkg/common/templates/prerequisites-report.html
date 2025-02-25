@@ -158,6 +158,17 @@
     }
     .info-message {
       font-size: 15px;
+      padding: 5px
+    }
+
+    .command-line {
+      background-color: #f4f4f4;
+      padding: 5px;
+      border-radius: 0px;
+      white-space: pre-wrap;
+      font-style: italic;
+      font-size: smaller;
+      font-family: monospace;
     }
 
     /* Frames for recommended adjustments */
@@ -304,18 +315,20 @@
 
       </ul>
     
-      <!-- Optional note if only basic checks were done -->
-      {{ if .ActiveCheckNote }}
+        <!-- Basic checks only -->
+        {{ if not .InCluster }}
         <div class="info-frame">
           <div class="info-icon">&#8505;</div>
           <div class="info-message">
-            Only basic checks performed. For full testing (including workload deployments), rerun with
-            <span style="font-style: italic; color: #008000;">--active-checks</span>.
+            Only basic checks performed. For full testing, including workload deployments, use In-cluster mode:
+            <pre class="command-line">
+kubectl apply -f https://raw.githubusercontent.com/kubescape/sizing-checker/refs/heads/main/k8s-manifest.yaml ; kubectl wait --for=condition=complete job/kubescape-prerequisite --timeout=60s ; kubectl logs job/kubescape-prerequisite</pre>
           </div>
         </div>
-      {{ end }}
+        {{ end }}
+
     </section>
-        
+
     <!-- Recommended Adjustments -->
     {{/* 
       Show this section ONLY if at least one check is "Adjustments recommended". 

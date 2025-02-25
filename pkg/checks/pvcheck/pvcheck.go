@@ -26,10 +26,10 @@ func RunPVProvisioningCheck(
 	ctx context.Context,
 	clientset *kubernetes.Clientset,
 	clusterData *common.ClusterData,
-	activeChecks *bool,
+	inCluster bool,
 ) *common.PVCheckResult {
 
-	if *activeChecks {
+	if inCluster {
 		// Full test with PVC + Pod creation
 		return runFullProvisioningTest(ctx, clientset, clusterData)
 	}

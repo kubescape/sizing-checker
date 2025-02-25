@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 
 	"github.com/kubescape/sizing-checker/pkg/checks/connectivitycheck"
@@ -13,10 +12,6 @@ import (
 )
 
 func main() {
-	// Define and parse our flag for active checks
-	activeChecks := flag.Bool("active-checks", false, "If set, run checks that require resource deployment on the cluster.")
-	flag.Parse()
-
 	clientset, inCluster := common.BuildKubeClient()
 	if clientset == nil {
 		log.Fatal("Could not create kube client. Exiting.")
@@ -32,7 +27,7 @@ func main() {
 
 	// 2) Run checks
 	sizingResult := sizing.RunSizingChecker(clusterData)
-	pvResult := pvcheck.RunPVProvisioningCheck(ctx, clientset, clusterData, activeChecks)
+	pvResult := pvcheck.RunPVProvisioningCheck(ctx, clientset, clusterData, inCluster)
 	connectivityResult := connectivitycheck.RunConnectivityChecks(ctx, clientset, clusterData, inCluster)
 	ebpfResult := ebpfcheck.RunEbpfCheck(ctx, clientset, clusterData, inCluster)
 
@@ -40,8 +35,10 @@ func main() {
 	finalReport := common.BuildReportData(clusterData, sizingResult, pvResult, connectivityResult, ebpfResult)
 
 	// If NOT using --active-checks, add a note to the HTML to clarify
-	if !*activeChecks {
-		finalReport.ActiveCheckNote = true
+	if inCluster {
+		finalReport.InCluster = true
+	} else {
+		finalReport.InCluster = false
 	}
 
 	common.GenerateOutput(finalReport, inCluster)
