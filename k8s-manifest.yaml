@@ -96,7 +96,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: kubescape-prerequisite
-          image: "quay.io/danvid/kubescape-prerequisite:dev"
+          image: "quay.io/danvid/kubescape-prerequisite"
           imagePullPolicy: Always
           volumeMounts:
             - mountPath: /boot
