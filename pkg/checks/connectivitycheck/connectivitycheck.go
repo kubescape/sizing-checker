@@ -1,4 +1,4 @@
-package connectivity
+package connectivitycheck
 
 import (
 	"context"
