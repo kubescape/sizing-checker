@@ -114,10 +114,10 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string) {
 	printConfigMapSuccess()
 }
 
-func GenerateOutput(sizingReportData *ReportData, inCluster bool) {
-	htmlContent := BuildHTMLReport(sizingReportData, PrerequisitesReportHTML)
-	yamlContent := BuildValuesYAML(sizingReportData)
-	fullDumpContent := BuildFullDumpYAML(sizingReportData.FullClusterData)
+func GenerateOutput(reportData *ReportData, inCluster bool) {
+	htmlContent := BuildHTMLReport(reportData, PrerequisitesReportHTML)
+	yamlContent := BuildValuesYAML(reportData)
+	fullDumpContent := BuildFullDumpYAML(reportData.FullClusterData)
 
 	if inCluster {
 		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent)

@@ -322,7 +322,7 @@
           <div class="info-message">
             Only basic checks performed. For full testing, including workload deployments, use In-cluster mode:
             <pre class="command-line">
-kubectl apply -f https://raw.githubusercontent.com/kubescape/sizing-checker/refs/heads/main/k8s-manifest.yaml ; kubectl wait --for=condition=complete job/kubescape-prerequisite --timeout=60s ; kubectl logs job/kubescape-prerequisite</pre>
+kubectl apply -f https://raw.githubusercontent.com/kubescape/sizing-checker/refs/heads/main/k8s-manifest.yaml ; kubectl wait -n kubescape-prerequisite --for=condition=complete job/kubescape-prerequisite --timeout=60s ; kubectl logs -n kubescape-prerequisite job/kubescape-prerequisite</pre>
           </div>
         </div>
         {{ end }}
