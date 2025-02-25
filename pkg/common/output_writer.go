@@ -97,7 +97,7 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string) {
 		Data: map[string]string{
 			"prerequisites-report.html": htmlContent,
 			"recommended-values.yaml":   helmValuesContent,
-			"full-cluster-dump.yaml":    fullDumpContent,
+			// "full-cluster-dump.yaml":    fullDumpContent,
 		},
 	}
 
@@ -114,10 +114,10 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string) {
 	printConfigMapSuccess()
 }
 
-func GenerateOutput(sizingReportData *ReportData, inCluster bool) {
-	htmlContent := BuildHTMLReport(sizingReportData, PrerequisitesReportHTML)
-	yamlContent := BuildValuesYAML(sizingReportData)
-	fullDumpContent := BuildFullDumpYAML(sizingReportData.FullClusterData)
+func GenerateOutput(reportData *ReportData, inCluster bool) {
+	htmlContent := BuildHTMLReport(reportData, PrerequisitesReportHTML)
+	yamlContent := BuildValuesYAML(reportData)
+	fullDumpContent := BuildFullDumpYAML(reportData.FullClusterData)
 
 	if inCluster {
 		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent)

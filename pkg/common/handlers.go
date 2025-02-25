@@ -3,23 +3,33 @@ package common
 import (
 	"fmt"
 	"html/template"
+	"sort"
 	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
-func BuildReportData(cd *ClusterData, sr *SizingResult) *ReportData {
+// BuildReportData gathers all relevant data into a ReportData struct.
+func BuildReportData(
+	cd *ClusterData,
+	sr *SizingResult,
+	pr *PVCheckResult,
+	ccr *ConnectivityResult,
+	er *EbpfResult,
+) *ReportData {
+
 	report := &ReportData{
-		// existing merges:
+		// Sizing data
 		TotalResources:             sr.TotalResources,
 		MaxNodeCPUCapacity:         sr.MaxNodeCPUCapacity,
 		MaxNodeMemoryMB:            sr.MaxNodeMemoryMB,
 		LargestContainerImageMB:    sr.LargestContainerImageMB,
 		DefaultResourceAllocations: sr.DefaultResourceAllocations,
 		FinalResourceAllocations:   sr.FinalResourceAllocations,
-		HasAnyAdjustments:          sr.HasAnyAdjustments,
+		HasSizingAdjustments:       sr.HasSizingAdjustments,
 
+		// Basic cluster details
 		KubernetesVersion: cd.ClusterDetails.Version,
 		CloudProvider:     cd.ClusterDetails.CloudProvider,
 		K8sDistribution:   cd.ClusterDetails.K8sDistribution,
@@ -28,9 +38,13 @@ func BuildReportData(cd *ClusterData, sr *SizingResult) *ReportData {
 
 		GenerationTime:  time.Now().Format("2006-01-02 15:04:05"),
 		FullClusterData: cd,
+
+		PVProvisioningMessage:    pr.ResultMessage,
+		ConnectivityCheckMessage: ccr.ResultMessage,
+		EBPFResultMessage:        er.ResultMessage,
 	}
 
-	// Now populate the node info summary fields:
+	// Node info summaries
 	totalNodes := cd.ClusterDetails.TotalNodeCount
 	ni := cd.NodeInfoSummaries
 
@@ -57,10 +71,17 @@ func BuildFullDumpYAML(cd *ClusterData) string {
 }
 
 func BuildHTMLReport(data *ReportData, tpl string) string {
-	tmpl, err := template.New("report").Parse(tpl)
+	// Create a FuncMap and include any functions you want to use in your template
+	funcMap := template.FuncMap{
+		"hasPrefix": strings.HasPrefix,
+	}
+
+	// Parse your template with FuncMap
+	tmpl, err := template.New("report").Funcs(funcMap).Parse(tpl)
 	if err != nil {
 		return fmt.Sprintf("Error building report: %v", err)
 	}
+
 	var sb strings.Builder
 	if err := tmpl.Execute(&sb, data); err != nil {
 		return fmt.Sprintf("Error rendering template: %v", err)
@@ -69,14 +90,28 @@ func BuildHTMLReport(data *ReportData, tpl string) string {
 }
 
 func BuildValuesYAML(d *ReportData) string {
+	overrides := collectOverrides(d)
+
+	if len(overrides) == 0 {
+		return "# no adjustments are required for the default values\n"
+	}
+
+	return convertOverridesToYAML(overrides)
+}
+
+func collectOverrides(d *ReportData) map[string]string {
 	overrides := map[string]string{}
 
-	// For each component in the default resource limits
+	// Disable persistence if PV provisioning failed
+	if d.PVProvisioningMessage != "Passed" {
+		overrides["configurations.persistence"] = "disable"
+	}
+
+	// Compare default vs. final resource allocations for each component
 	for comp, defMap := range d.DefaultResourceAllocations {
-		// Grab the final map for the same component
 		finalMap := d.FinalResourceAllocations[comp]
 		if finalMap == nil {
-			continue // skip if there's no final map for this component
+			continue
 		}
 
 		// CPU request override
@@ -108,102 +143,83 @@ func BuildValuesYAML(d *ReportData) string {
 		}
 	}
 
-	// If no overrides, just return a comment
-	if len(overrides) == 0 {
-		return "# no adjustments are required for the default values\n"
+	return overrides
+}
+
+func convertOverridesToYAML(overrides map[string]string) string {
+	// 1. Group by top-level prefix (everything up to the first ".").
+	grouped := make(map[string]map[string]string)
+	for fullKey, value := range overrides {
+		parts := strings.SplitN(fullKey, ".", 2)
+		topLevel := parts[0]
+		subKey := ""
+		if len(parts) > 1 {
+			subKey = parts[1]
+		}
+
+		if _, exists := grouped[topLevel]; !exists {
+			grouped[topLevel] = make(map[string]string)
+		}
+		grouped[topLevel][subKey] = value
 	}
 
-	// Build the partial YAML for each known component
+	// 2. Sort top-level keys for consistent output.
+	var topKeys []string
+	for k := range grouped {
+		topKeys = append(topKeys, k)
+	}
+	sort.Strings(topKeys)
+
+	// 3. Build YAML for each top-level group.
 	var sb strings.Builder
-	sb.WriteString(buildYamlSection("nodeAgent", overrides,
-		[]string{"requests.cpu", "requests.memory", "limits.cpu", "limits.memory"}))
-	sb.WriteString(buildYamlSection("storage", overrides,
-		[]string{"requests.memory", "limits.memory"}))
-	sb.WriteString(buildYamlSection("kubevuln", overrides,
-		[]string{"requests.memory", "limits.memory"}))
+	for _, topKey := range topKeys {
+		sb.WriteString(fmt.Sprintf("%s:\n", topKey))
+
+		subMap := grouped[topKey]
+		var subKeys []string
+		for k := range subMap {
+			subKeys = append(subKeys, k)
+		}
+		sort.Strings(subKeys)
+
+		for _, subKey := range subKeys {
+			val := subMap[subKey]
+			if subKey == "" {
+				// If there's no subKey, just put the value at this level (unlikely in typical usage).
+				sb.WriteString(fmt.Sprintf("  %s\n", val))
+			} else {
+				// Recursively build nested structure.
+				buildNestedYAML(&sb, "  ", subKey, val)
+			}
+		}
+	}
 
 	return sb.String()
 }
 
-func addIfOverride(overrides map[string]string, key, defaultVal, finalVal string) {
-	if finalVal != defaultVal {
-		overrides[key] = finalVal
-	}
-}
-
-func buildYamlSection(componentName string, overrides map[string]string, keys []string) string {
-	fields := map[string]string{}
-	for _, k := range keys {
-		fullKey := fmt.Sprintf("%s.resources.%s", componentName, k)
-		fields[k] = overrides[fullKey]
-	}
-	return buildComponentSection(componentName, "resources", fields)
-}
-
-// buildComponentSection is the final sub-snippet for generating the partial YAML
-func buildComponentSection(componentName, subSection string, fields map[string]string) string {
-	// Check if there's any override
-	hasData := false
-	for _, val := range fields {
-		if val != "" {
-			hasData = true
-			break
-		}
-	}
-	if !hasData {
-		return ""
+func buildNestedYAML(sb *strings.Builder, indent, subKey, value string) {
+	parts := strings.SplitN(subKey, ".", 2)
+	if len(parts) == 1 {
+		sb.WriteString(fmt.Sprintf("%s%s: %s\n", indent, parts[0], value))
+		return
 	}
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s:\n", componentName))
-	sb.WriteString(fmt.Sprintf("  %s:\n", subSection))
-
-	// "requests" block
-	requests := []string{}
-	if fields["requests.cpu"] != "" {
-		requests = append(requests, fmt.Sprintf("      cpu: %s", fields["requests.cpu"]))
-	}
-	if fields["requests.memory"] != "" {
-		requests = append(requests, fmt.Sprintf("      memory: %s", fields["requests.memory"]))
-	}
-	if len(requests) > 0 {
-		sb.WriteString("    requests:\n")
-		for _, line := range requests {
-			sb.WriteString(line + "\n")
-		}
-	}
-
-	// "limits" block
-	limits := []string{}
-	if fields["limits.cpu"] != "" {
-		limits = append(limits, fmt.Sprintf("      cpu: %s", fields["limits.cpu"]))
-	}
-	if fields["limits.memory"] != "" {
-		limits = append(limits, fmt.Sprintf("      memory: %s", fields["limits.memory"]))
-	}
-	if len(limits) > 0 {
-		sb.WriteString("    limits:\n")
-		for _, line := range limits {
-			sb.WriteString(line + "\n")
-		}
-	}
-
-	return sb.String()
+	sb.WriteString(fmt.Sprintf("%s%s:\n", indent, parts[0]))
+	buildNestedYAML(sb, indent+"  ", parts[1], value)
 }
 
 func summarizeMap(counts map[string]int, totalCount int) string {
 	if len(counts) == 1 {
-		// If there's exactly one key, we might just return that key (or "Linux (7)" depending on preference)
+		// If there's exactly one key, we might just return that key or "Linux (7)"
 		for key, c := range counts {
 			if c == totalCount {
 				return key // e.g., all 10 are "Linux"
 			}
-			// If there's a single key but it doesn't match totalCount, display "Linux (7)"
 			return fmt.Sprintf("%s (%d)", key, c)
 		}
 	}
 
-	// multiple distinct keys: "Linux (7), Windows (3)"
+	// multiple distinct keys: e.g. "Linux (7), Windows (3)"
 	var parts []string
 	for key, c := range counts {
 		parts = append(parts, fmt.Sprintf("%s (%d)", key, c))

@@ -40,8 +40,8 @@ There are two ways to run the check:
    Check the status and logs of the Job:
 
    ```sh
-   kubectl wait --for=condition=complete job/kubescape-prerequisite --timeout=60s
-   kubectl logs job/kubescape-prerequisite
+   kubectl wait -n kubescape-prerequisite --for=condition=complete job/kubescape-prerequisite --timeout=60s
+   kubectl logs -n kubescape-prerequisite job/kubescape-prerequisite
    ```
 
 3. **Export the Files:**
@@ -49,9 +49,16 @@ There are two ways to run the check:
    Retrieve the `recommended-values.yaml` and `prerequisites-report.html` from the ConfigMap:
 
    ```sh
-   kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "recommended-values.yaml" }}' > recommended-values.yaml
-   kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "prerequisites-report.html" }}' > prerequisites-report.html
+   kubectl get -n kubescape-prerequisite configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "recommended-values.yaml" }}' > recommended-values.yaml
+   kubectl get -n kubescape-prerequisite configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "prerequisites-report.html" }}' > prerequisites-report.html
    ```
+
+4. **Clean Up Resources**
+   After extracting the necessary files, remove the deployed resources to free up cluster space:
+   ```sh
+   kubectl delete -f k8s-manifest.yaml
+   ```
+
 
 ## Usage
 

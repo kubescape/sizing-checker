@@ -4,7 +4,14 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 )
+
+type ConnectivityResult struct {
+	AddressesTested []string
+	SuccessCount    int
+	ResultMessage   string // "Passed", "Failed", "Partial success (X/Y)", or "Skipped"
+}
 
 type SizingResult struct {
 	TotalResources          int
@@ -18,7 +25,14 @@ type SizingResult struct {
 	DefaultResourceAllocations map[string]map[string]string
 
 	// Whether any resource changed from default
-	HasAnyAdjustments bool
+	HasSizingAdjustments bool
+}
+
+type PVCheckResult struct {
+	PassedCount   int
+	FailedCount   int
+	TotalNodes    int
+	ResultMessage string // "Passed", "Failed", or "Skipped"
 }
 
 type NodeInfoSummary struct {
@@ -41,7 +55,6 @@ type ClusterDetails struct {
 	TotalVCPUCount  int
 }
 
-// ClusterData aggregates everything we collect from the cluster.
 type ClusterData struct {
 	Nodes        []corev1.Node
 	Pods         []corev1.Pod
@@ -53,8 +66,14 @@ type ClusterData struct {
 	Jobs         []batchv1.Job
 	CronJobs     []batchv1.CronJob
 
+	StorageClasses []storagev1.StorageClass
+
 	ClusterDetails    ClusterDetails
 	NodeInfoSummaries NodeInfoSummary
+}
+
+type EbpfResult struct {
+	ResultMessage string // "Passed", "Warning", "Failed", or any descriptive message
 }
 
 type ReportData struct {
@@ -72,8 +91,8 @@ type ReportData struct {
 	TotalNodeCount    int
 	TotalVCPUCount    int
 
-	GenerationTime    string
-	HasAnyAdjustments bool
+	GenerationTime       string
+	HasSizingAdjustments bool
 
 	NodeOSSummary               string
 	NodeArchSummary             string
@@ -85,5 +104,10 @@ type ReportData struct {
 
 	FullClusterData *ClusterData
 
-	PVProvisioningMessage string
+	PVProvisioningMessage    string
+	ConnectivityCheckMessage string
+
+	EBPFResultMessage string
+
+	InCluster bool
 }

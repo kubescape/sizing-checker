@@ -1,10 +1,18 @@
+---
 apiVersion: v1
-kind: ServiceAccount
+kind: Namespace
 metadata:
   name: kubescape-prerequisite
   labels:
     app: kubescape-prerequisite
-
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubescape-prerequisite
+  namespace: kubescape-prerequisite
+  labels:
+    app: kubescape-prerequisite
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -13,20 +21,48 @@ metadata:
   labels:
     app: kubescape-prerequisite
 rules:
-  - apiGroups: [""]  
-    resources: ["pods", "services", "replicationcontrollers", "nodes"]
-    verbs: ["list"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
-    verbs: ["list"]
-  - apiGroups: ["batch"]
-    resources: ["jobs", "cronjobs"]
-    verbs: ["list"]
-
+  # Core API group resources
   - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create", "update", "get"]
-
+    resources:
+      - pods
+      - services
+      - replicationcontrollers
+      - nodes
+      - persistentvolumes
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+  # Apps API group
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - daemonsets
+      - statefulsets
+    verbs:
+      - list
+  # Batch API group
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - list
+  # Storage API group
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+    verbs:
+      - list
+  # ConfigMaps (create/update/get)
+  - apiGroups: [""]
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - update
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -37,17 +73,17 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: kubescape-prerequisite
-    namespace: default
+    namespace: kubescape-prerequisite
 roleRef:
   kind: ClusterRole
   name: kubescape-prerequisite
   apiGroup: rbac.authorization.k8s.io
-
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: kubescape-prerequisite
+  namespace: kubescape-prerequisite
   labels:
     app: kubescape-prerequisite
 spec:
@@ -56,12 +92,18 @@ spec:
       labels:
         app: kubescape-prerequisite
     spec:
-      restartPolicy: Never
       serviceAccountName: kubescape-prerequisite
+      restartPolicy: Never
       containers:
         - name: kubescape-prerequisite
           image: "quay.io/danvid/kubescape-prerequisite"
           imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /boot
+              name: boot
+          env:
+            - name: CONNECTIVITY_TARGETS
+              value: ""
           resources:
             requests:
               memory: "256Mi"
@@ -69,3 +111,50 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+      volumes:
+        - name: boot
+          hostPath:
+            path: /boot
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kubescape-pv-check-pvc
+  namespace: kubescape-prerequisite
+  labels:
+    app: kubescape-prerequisite
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # Uncomment and specify a name if you want to use a non-default StorageClass
+  # storageClassName: my-dynamic-sc
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubescape-pv-check-pod
+  namespace: kubescape-prerequisite
+  labels:
+    app: kubescape-prerequisite
+spec:
+  restartPolicy: Never
+  containers:
+    - name: pv-check-container
+      image: registry.k8s.io/pause:3.9
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+      volumeMounts:
+        - name: pvc-volume
+          mountPath: /test
+  volumes:
+    - name: pvc-volume
+      persistentVolumeClaim:
+        claimName: kubescape-pv-check-pvc
