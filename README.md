@@ -6,7 +6,7 @@ Kubescape Prerequisites Checker analyzes your Kubernetes cluster and generates r
 
 ## Prerequisites
 
-- **Kubeconfig** configured for access to the Kubernetes cluster where you plan to deploy Armo.
+- **Kubeconfig** configured for access to the Kubernetes cluster where you plan to deploy Armo (either via default `~/.kube/config` or a custom path passed to `--kubeconfig`).
 
 ## Run the Check
 
@@ -14,12 +14,19 @@ There are two ways to run the check:
 
 ### Option 1 - Local Run
 
-1. Navigate to the command directory and Execute the program:
+1. **Clone and navigate to the repository**:
    ```sh
    git clone https://github.com/kubescape/sizing-checker.git
    cd sizing-checker/
+   ```
+2. **Run the program** (using default `~/.kube/config` if no in-cluster config is found):
+   ```sh
    go run ./cmd/checker
    ```
+   - **Optional**: If you want to point to a **custom** kubeconfig, use:
+     ```sh
+     go run ./cmd/checker --kubeconfig /path/to/another-kubeconfig
+     ```
 
 ### Option 2 - In-cluster Run
 
@@ -53,12 +60,12 @@ There are two ways to run the check:
    kubectl get -n kubescape-prerequisite configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "prerequisites-report.html" }}' > prerequisites-report.html
    ```
 
-4. **Clean Up Resources**
+4. **Clean Up Resources:**
+
    After extracting the necessary files, remove the deployed resources to free up cluster space:
    ```sh
    kubectl delete -f k8s-manifest.yaml
    ```
-
 
 ## Usage
 
@@ -92,8 +99,10 @@ If you want to review the prerequisites report, open the HTML file:
     ```
 
 ## Output
+
 ### Local Run
-```------------------------------------------------------------
+```plaintext
+------------------------------------------------------------
 ✅ Prerequisites report generated locally!
 • /tmp/prerequisites-report.html (HTML report)
 • /tmp/recommended-values.yaml (Helm values file)
@@ -103,12 +112,12 @@ If you want to review the prerequisites report, open the HTML file:
 ------------------------------------------------------------
 ```
 
-
 ### In-cluster Run
 ```sh
 kubectl logs job/kubescape-prerequisite
 ```
-```------------------------------------------------------------
+```plaintext
+------------------------------------------------------------
 ✅ Prerequisites report stored in Kubernetes ConfigMap!
 • ConfigMap Name: prerequisites-report
 • Namespace: default
