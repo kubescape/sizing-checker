@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 
 	"github.com/kubescape/sizing-checker/pkg/checks/connectivitycheck"
@@ -12,7 +13,11 @@ import (
 )
 
 func main() {
-	clientset, inCluster := common.BuildKubeClient()
+	// Add a new CLI flag to specify a custom kubeconfig path
+	kubeconfigPath := flag.String("kubeconfig", "", "Path to the kubeconfig file. If not set, in-cluster config is used or $HOME/.kube/config if outside a cluster.")
+	flag.Parse()
+
+	clientset, inCluster := common.BuildKubeClient(*kubeconfigPath)
 	if clientset == nil {
 		log.Fatal("Could not create kube client. Exiting.")
 	}
@@ -35,11 +40,7 @@ func main() {
 	finalReport := common.BuildReportData(clusterData, sizingResult, pvResult, connectivityResult, ebpfResult)
 
 	// If NOT using --active-checks, add a note to the HTML to clarify
-	if inCluster {
-		finalReport.InCluster = true
-	} else {
-		finalReport.InCluster = false
-	}
+	finalReport.InCluster = inCluster
 
 	common.GenerateOutput(finalReport, inCluster)
 }
