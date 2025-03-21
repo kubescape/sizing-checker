@@ -6,12 +6,17 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
+
+// TemplatePath is the path to the review values template
+var TemplatePath = "pkg/common/templates/review-values.html"
 
 func printSeparator() {
 	fmt.Println("------------------------------------------------------------")
@@ -50,30 +55,58 @@ func printConfigMapSuccess() {
 	printSeparator()
 }
 
-func WriteToDisk(htmlContent, helmValuesContent, fullDumpContent string) {
+func WriteToDisk(htmlContent, helmValuesContent, fullDumpContent string, reviewValuesTemplate []byte, storageClasses []string, reportData *ReportData) {
 	// 1) Write the HTML report
 	reportPath := filepath.Join(os.TempDir(), "prerequisites-report.html")
 	if err := os.WriteFile(reportPath, []byte(htmlContent), 0644); err != nil {
-		log.Fatalf("Could not write HTML report: %v", err)
+		log.Fatalf("Failed to write HTML report to %s: %v", reportPath, err)
 	}
 
-	// 2) Write the recommended values YAML
+	// 2) Parse and write the review values HTML with actual YAML content
+	reviewValuesPath := filepath.Join(os.TempDir(), "review-values.html")
+	tmpl, err := template.New("review-values").Parse(string(reviewValuesTemplate))
+	if err != nil {
+		log.Fatalf("Failed to parse review values template: %v", err)
+	}
+
+	// Create a file to write the processed template
+	reviewValuesFile, err := os.Create(reviewValuesPath)
+	if err != nil {
+		log.Fatalf("Failed to create review-values.html at %s: %v", reviewValuesPath, err)
+	}
+	defer reviewValuesFile.Close()
+
+	// Execute the template with the YAML content and storage classes
+	data := struct {
+		RecommendedValues     string
+		StorageClasses        []string
+		PVProvisioningMessage string
+	}{
+		RecommendedValues:     helmValuesContent,
+		StorageClasses:        storageClasses,
+		PVProvisioningMessage: reportData.PVProvisioningMessage,
+	}
+	if err := tmpl.Execute(reviewValuesFile, data); err != nil {
+		log.Fatalf("Failed to execute review values template: %v", err)
+	}
+
+	// 3) Write the recommended values YAML
 	valuesPath := filepath.Join(os.TempDir(), "recommended-values.yaml")
 	if err := os.WriteFile(valuesPath, []byte(helmValuesContent), 0644); err != nil {
-		log.Fatalf("Could not write recommended-values.yaml: %v", err)
+		log.Fatalf("Failed to write recommended-values.yaml to %s: %v", valuesPath, err)
 	}
 
-	// 3) Write the full cluster dump
+	// 4) Write the full cluster dump
 	dumpPath := filepath.Join(os.TempDir(), "full-cluster-dump.yaml")
 	if err := os.WriteFile(dumpPath, []byte(fullDumpContent), 0644); err != nil {
-		log.Fatalf("Could not write full-cluster-dump.yaml: %v", err)
+		log.Fatalf("Failed to write full-cluster-dump.yaml to %s: %v", dumpPath, err)
 	}
 
-	// 4) Print success messages and instructions for local disk
+	// 5) Print success messages and instructions for local disk
 	printDiskSuccess(reportPath, valuesPath, dumpPath)
 }
 
-func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string) {
+func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, reviewValuesTemplate []byte, storageClasses []string, reportData *ReportData) {
 	// Build in-cluster Kubernetes client configuration
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -86,6 +119,27 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string) {
 		log.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
 
+	// Parse the review values template
+	tmpl, err := template.New("review-values").Parse(string(reviewValuesTemplate))
+	if err != nil {
+		log.Fatalf("Could not parse review values template: %v", err)
+	}
+
+	// Execute the template with the YAML content and storage classes
+	var processedReviewValues strings.Builder
+	data := struct {
+		RecommendedValues     string
+		StorageClasses        []string
+		PVProvisioningMessage string
+	}{
+		RecommendedValues:     helmValuesContent,
+		StorageClasses:        storageClasses,
+		PVProvisioningMessage: reportData.PVProvisioningMessage,
+	}
+	if err := tmpl.Execute(&processedReviewValues, data); err != nil {
+		log.Fatalf("Could not execute review values template: %v", err)
+	}
+
 	configMapName := "kubescape-prerequisites-report"
 	namespace := "default"
 
@@ -96,6 +150,7 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string) {
 		},
 		Data: map[string]string{
 			"prerequisites-report.html": htmlContent,
+			"review-values.html":        processedReviewValues.String(),
 			"recommended-values.yaml":   helmValuesContent,
 			// "full-cluster-dump.yaml":    fullDumpContent,
 		},
@@ -119,9 +174,16 @@ func GenerateOutput(reportData *ReportData, inCluster bool) {
 	yamlContent := BuildValuesYAML(reportData)
 	fullDumpContent := BuildFullDumpYAML(reportData.FullClusterData)
 
+	// Read the review values template from file
+	reviewValuesTemplate, err := os.ReadFile(TemplatePath)
+	if err != nil {
+		log.Printf("Warning: Could not read review-values.html template from %s: %v", TemplatePath, err)
+		reviewValuesTemplate = []byte("Error: Could not load review values template")
+	}
+
 	if inCluster {
-		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent)
+		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent, reviewValuesTemplate, reportData.StorageClasses, reportData)
 	} else {
-		WriteToDisk(htmlContent, yamlContent, fullDumpContent)
+		WriteToDisk(htmlContent, yamlContent, fullDumpContent, reviewValuesTemplate, reportData.StorageClasses, reportData)
 	}
 }
