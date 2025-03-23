@@ -126,11 +126,23 @@ kubectl logs job/kubescape-prerequisite
 ⬇️ To export the report and recommended values to local files, run the following commands:
     kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "prerequisites-report.html" }}' > prerequisites-report.html
     kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "recommended-values.yaml" }}' > recommended-values.yaml
+    kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data "review-values.html" }}' > review-values.html
 
 📋 Open prerequisites-report.html in your browser for details.
 🚀 Use the generated recommended-values.yaml to optimize Kubescape for your cluster.
 ------------------------------------------------------------
 ```
 
-### Report example
-![alt text](Report-example.png)
+## Report example
+
+### Main Report
+![alt text](screenshots/Report-example.png)
+
+### In-cluster Command
+![alt text](screenshots/in-cluster-command.png)
+
+### Adjustments Details
+![alt text](screenshots/adjustments-details.png)
+
+### Recommended Values
+![alt text](screenshots/recommended-values.png)
