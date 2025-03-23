@@ -97,6 +97,36 @@ func BuildHTMLReport(data *ReportData, tpl string) string {
 	return sb.String()
 }
 
+func BuildReviewValuesHTML(data *ReportData, helmValuesContent string) string {
+	// Create a FuncMap and include any functions you want to use in your template
+	funcMap := template.FuncMap{
+		"hasPrefix": strings.HasPrefix,
+	}
+
+	// Parse the embedded review values template with FuncMap
+	tmpl, err := template.New("review-values").Funcs(funcMap).Parse(ReviewValuesHTML)
+	if err != nil {
+		return fmt.Sprintf("Error building review values page: %v", err)
+	}
+
+	// Execute the template with the YAML content and storage classes
+	templateData := struct {
+		RecommendedValues     string
+		StorageClasses        []string
+		PVProvisioningMessage string
+	}{
+		RecommendedValues:     helmValuesContent,
+		StorageClasses:        data.StorageClasses,
+		PVProvisioningMessage: data.PVProvisioningMessage,
+	}
+
+	var sb strings.Builder
+	if err := tmpl.Execute(&sb, templateData); err != nil {
+		return fmt.Sprintf("Error rendering review values template: %v", err)
+	}
+	return sb.String()
+}
+
 // BuildValuesYAML generates a YAML string containing the recommended Helm values
 // based on the report data. It includes resource allocations and other necessary
 // configurations for the cluster.

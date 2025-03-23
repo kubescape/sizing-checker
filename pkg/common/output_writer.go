@@ -6,17 +6,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
-	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
-
-// TemplatePath is the path to the review values template
-var TemplatePath = "pkg/common/templates/review-values.html"
 
 func printSeparator() {
 	fmt.Println("------------------------------------------------------------")
@@ -55,15 +50,14 @@ func printConfigMapSuccess() {
 	printSeparator()
 }
 
-func WriteToDisk(htmlContent, helmValuesContent, fullDumpContent string, reportData *ReportData) {
+func WriteToDisk(htmlContent string, helmValuesContent string, fullDumpContent string, reviewValuesHTML string) {
 	// 1) Write the HTML report
 	reportPath := filepath.Join(os.TempDir(), "prerequisites-report.html")
 	if err := os.WriteFile(reportPath, []byte(htmlContent), 0644); err != nil {
 		log.Fatalf("Failed to write HTML report to %s: %v", reportPath, err)
 	}
 
-	// 2) Build and write the review values HTML
-	reviewValuesHTML := BuildReviewValuesHTML(reportData, helmValuesContent)
+	// 2) Write the review values HTML
 	reviewValuesPath := filepath.Join(os.TempDir(), "review-values.html")
 	if err := os.WriteFile(reviewValuesPath, []byte(reviewValuesHTML), 0644); err != nil {
 		log.Fatalf("Failed to write review-values.html to %s: %v", reviewValuesPath, err)
@@ -85,7 +79,7 @@ func WriteToDisk(htmlContent, helmValuesContent, fullDumpContent string, reportD
 	printDiskSuccess(reportPath, valuesPath, dumpPath)
 }
 
-func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, reportData *ReportData) {
+func WriteToConfigMap(htmlContent string, helmValuesContent string, fullDumpContent string, reviewValuesHTML string) {
 	// Build in-cluster Kubernetes client configuration
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -97,9 +91,6 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, re
 	if err != nil {
 		log.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
-
-	// Build the review values HTML
-	reviewValuesHTML := BuildReviewValuesHTML(reportData, helmValuesContent)
 
 	configMapName := "kubescape-prerequisites-report"
 	namespace := "default"
@@ -130,45 +121,15 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, re
 	printConfigMapSuccess()
 }
 
-// BuildReviewValuesHTML generates the HTML for the review values page
-func BuildReviewValuesHTML(data *ReportData, helmValuesContent string) string {
-	// Create a FuncMap and include any functions you want to use in your template
-	funcMap := template.FuncMap{
-		"hasPrefix": strings.HasPrefix,
-	}
-
-	// Parse the embedded review values template with FuncMap
-	tmpl, err := template.New("review-values").Funcs(funcMap).Parse(ReviewValuesHTML)
-	if err != nil {
-		return fmt.Sprintf("Error building review values page: %v", err)
-	}
-
-	// Execute the template with the YAML content and storage classes
-	templateData := struct {
-		RecommendedValues     string
-		StorageClasses        []string
-		PVProvisioningMessage string
-	}{
-		RecommendedValues:     helmValuesContent,
-		StorageClasses:        data.StorageClasses,
-		PVProvisioningMessage: data.PVProvisioningMessage,
-	}
-
-	var sb strings.Builder
-	if err := tmpl.Execute(&sb, templateData); err != nil {
-		return fmt.Sprintf("Error rendering review values template: %v", err)
-	}
-	return sb.String()
-}
-
 func GenerateOutput(reportData *ReportData, inCluster bool) {
 	htmlContent := BuildHTMLReport(reportData, PrerequisitesReportHTML)
 	yamlContent := BuildValuesYAML(reportData)
+	reviewValuesHTML := BuildReviewValuesHTML(reportData, yamlContent)
 	fullDumpContent := BuildFullDumpYAML(reportData.FullClusterData)
 
 	if inCluster {
-		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent, reportData)
+		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent, reviewValuesHTML)
 	} else {
-		WriteToDisk(htmlContent, yamlContent, fullDumpContent, reportData)
+		WriteToDisk(htmlContent, yamlContent, fullDumpContent, reviewValuesHTML)
 	}
 }
