@@ -138,11 +138,11 @@ kubectl logs job/kubescape-prerequisite
 ### Main Report
 ![alt text](screenshots/Report-example.png)
 
-### Adjustments Details
-![alt text](screenshots/adjustments-details.png)
-
 ### In-cluster Command
 ![alt text](screenshots/in-cluster-command.png)
+
+### Adjustments Details
+![alt text](screenshots/adjustments-details.png)
 
 ### Recommended Values
 ![alt text](screenshots/recommended-values.png)
