@@ -110,4 +110,6 @@ type ReportData struct {
 	EBPFResultMessage string
 
 	InCluster bool
+
+	StorageClasses []string
 }

@@ -10,7 +10,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// BuildReportData gathers all relevant data into a ReportData struct.
+// BuildReportData constructs a ReportData struct from the cluster details and check results.
+// It processes resource allocations, node information, and storage class data to generate
+// a comprehensive report for the user.
 func BuildReportData(
 	cd *ClusterData,
 	sr *SizingResult,
@@ -42,6 +44,12 @@ func BuildReportData(
 		PVProvisioningMessage:    pr.ResultMessage,
 		ConnectivityCheckMessage: ccr.ResultMessage,
 		EBPFResultMessage:        er.ResultMessage,
+	}
+
+	// Extract storage class names
+	report.StorageClasses = make([]string, 0, len(cd.StorageClasses))
+	for _, sc := range cd.StorageClasses {
+		report.StorageClasses = append(report.StorageClasses, sc.Name)
 	}
 
 	// Node info summaries
@@ -89,23 +97,59 @@ func BuildHTMLReport(data *ReportData, tpl string) string {
 	return sb.String()
 }
 
+func BuildReviewValuesHTML(data *ReportData, helmValuesContent string) string {
+	// Create a FuncMap and include any functions you want to use in your template
+	funcMap := template.FuncMap{
+		"hasPrefix": strings.HasPrefix,
+	}
+
+	// Parse the embedded review values template with FuncMap
+	tmpl, err := template.New("review-values").Funcs(funcMap).Parse(ReviewValuesHTML)
+	if err != nil {
+		return fmt.Sprintf("Error building review values page: %v", err)
+	}
+
+	// Execute the template with the YAML content and storage classes
+	templateData := struct {
+		RecommendedValues     string
+		StorageClasses        []string
+		PVProvisioningMessage string
+	}{
+		RecommendedValues:     helmValuesContent,
+		StorageClasses:        data.StorageClasses,
+		PVProvisioningMessage: data.PVProvisioningMessage,
+	}
+
+	var sb strings.Builder
+	if err := tmpl.Execute(&sb, templateData); err != nil {
+		return fmt.Sprintf("Error rendering review values template: %v", err)
+	}
+	return sb.String()
+}
+
+// BuildValuesYAML generates a YAML string containing the recommended Helm values
+// based on the report data. It includes resource allocations and other necessary
+// configurations for the cluster.
 func BuildValuesYAML(d *ReportData) string {
 	overrides := collectOverrides(d)
 
-	if len(overrides) == 0 {
+	if len(overrides) == 0 && d.PVProvisioningMessage != "Failed" {
 		return "# no adjustments are required for the default values\n"
+	}
+
+	// Add persistence configuration if PV provisioning check failed
+	if d.PVProvisioningMessage == "Failed" {
+		overrides["configurations.persistence"] = "disable"
 	}
 
 	return convertOverridesToYAML(overrides)
 }
 
+// collectOverrides gathers all the necessary Helm value overrides based on the report data.
+// It processes resource allocations and other configurations to generate a map of
+// overrides that should be applied to the default Helm values.
 func collectOverrides(d *ReportData) map[string]string {
 	overrides := map[string]string{}
-
-	// Disable persistence if PV provisioning failed
-	if d.PVProvisioningMessage != "Passed" {
-		overrides["configurations.persistence"] = "disable"
-	}
 
 	// Compare default vs. final resource allocations for each component
 	for comp, defMap := range d.DefaultResourceAllocations {

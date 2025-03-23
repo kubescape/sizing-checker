@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Recommended Values - Kubescape</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            margin: 0;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            color: #444;
+            padding: 1.5rem;
+        }
+
+        .container {
+            display: flex;
+            gap: 2rem;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .side-panel {
+            width: 300px;
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+            position: sticky;
+            top: 1.5rem;
+        }
+
+        .side-panel h2 {
+            font-size: 18px;
+            color: #2e3f6e;
+            margin: 0 0 15px 0;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e5e5;
+        }
+
+        .storage-select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #444;
+            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 14px;
+        }
+
+        .storage-select:hover {
+            border-color: #2e3f6e;
+        }
+
+        .storage-select:focus {
+            outline: none;
+            border-color: #2e3f6e;
+            box-shadow: 0 0 0 3px rgba(46, 63, 110, 0.1);
+        }
+
+        .main-content {
+            flex: 1;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e5e5e5;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        header h1 {
+            font-size: 30px;
+            color: #2e3f6e;
+            margin: 0;
+        }
+
+        .content {
+            background: #fafafa;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            overflow: hidden;
+        }
+
+        .content:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .yaml-container {
+            position: relative;
+        }
+
+        .yaml-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+            z-index: 1;
+        }
+
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            background: #f8f9fa;
+            color: #2e3f6e;
+            border: 1px solid #dee2e6;
+            transition: all 0.2s ease;
+        }
+
+        .action-button:hover {
+            background: #e9ecef;
+            border-color: #ced4da;
+            transform: translateY(-1px);
+        }
+
+        .action-button svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .action-button.copy {
+            background: #e7f3fe;
+            border-color: #b3d4fc;
+            color: #31708f;
+        }
+
+        .action-button.copy:hover {
+            background: #d1e8ff;
+            border-color: #a3d2ff;
+        }
+
+        .action-button.download {
+            background: #e8f5e9;
+            border-color: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .action-button.download:hover {
+            background: #d4edda;
+            border-color: #b9dfc3;
+        }
+
+        pre {
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa !important;
+            border-radius: 0;
+            overflow-x: auto;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        pre code {
+            color: #333;
+            background: none;
+            text-shadow: none;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+        }
+
+        .token.string {
+            color: #22863a;
+        }
+
+        .token.number {
+            color: #005cc5;
+        }
+
+        .token.keyword {
+            color: #d73a49;
+        }
+
+        .token.comment {
+            color: #6a737d;
+        }
+
+        .token.function {
+            color: #6f42c1;
+        }
+
+        .token.operator {
+            color: #d73a49;
+        }
+
+        .token.punctuation {
+            color: #24292e;
+        }
+
+        .copy-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            display: none;
+            animation: fadeInOut 2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .side-panel {
+                width: 100%;
+                position: static;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .yaml-actions {
+                position: static;
+                justify-content: flex-end;
+                padding: 10px;
+                background: #f8f9fa;
+                border-bottom: 1px solid #e5e5e5;
+            }
+
+            pre {
+                border-radius: 0 0 8px 8px;
+            }
+        }
+    </style>
+</head>
+<body onload="updateYAML()">
+    <div class="container">
+        {{if ne .PVProvisioningMessage "Passed"}}
+        <div class="side-panel">
+            <h2>Select Storage Configuration</h2>
+            <select class="storage-select" id="storageConfig" onchange="updateYAML()">
+                <option value="disable">Disable persistence</option>
+                {{range .StorageClasses}}
+                <option value="{{.}}">Use Storage Classes: {{.}}</option>
+                {{end}}
+            </select>
+        </div>
+        {{end}}
+        <div class="main-content">
+            <header>
+                <h1>Recommended Values</h1>
+            </header>
+
+            <div class="content">
+                <div class="yaml-container">
+                    <div class="yaml-actions">
+                        <button class="action-button copy" onclick="copyToClipboard()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path>
+                            </svg>
+                            Copy
+                        </button>
+                        <button class="action-button download" onclick="downloadValues()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M5 20h14v-2H5v2zM13 4h-2v9H8l4 4 4-4h-3z"></path>
+                            </svg>
+                            Download
+                        </button>
+                    </div>
+                    <pre><code class="language-yaml" id="yamlContent">{{.RecommendedValues}}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="copy-indicator">Values file downloaded!</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script>
+        let originalYAML = `{{.RecommendedValues}}`;
+
+        function updateYAML() {
+            const select = document.getElementById('storageConfig');
+            const selectedValue = select.value;
+            let yamlContent = originalYAML;
+
+            // Remove any existing configurations section if it exists
+            yamlContent = yamlContent.replace(/configurations:.*?(?=\n\w|$)/s, '');
+
+            if (selectedValue === 'disable') {
+                if (!yamlContent.includes('configurations:')) {
+                    yamlContent = '# Storage Configuration\nconfigurations:\n  persistence: disable\n\n# Resource Allocations' + yamlContent;
+                } else {
+                    yamlContent = yamlContent.replace(/configurations:.*?(?=\n\w|$)/s, '# Storage Configuration\nconfigurations:\n  persistence: disable\n\n# Resource Allocations');
+                }
+            } else {
+                if (!yamlContent.includes('persistence:')) {
+                    yamlContent = '# Storage Configuration\npersistence:\n  storageClass: ' + selectedValue + '\n\n# Resource Allocations' + yamlContent;
+                } else {
+                    yamlContent = yamlContent.replace(/persistence:.*?(?=\n\w|$)/s, '# Storage Configuration\npersistence:\n  storageClass: ' + selectedValue + '\n\n# Resource Allocations');
+                }
+            }
+
+            const codeElement = document.getElementById('yamlContent');
+            codeElement.textContent = yamlContent;
+            Prism.highlightElement(codeElement);
+        }
+
+        function copyToClipboard() {
+            const content = document.getElementById('yamlContent').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                const indicator = document.querySelector('.copy-indicator');
+                indicator.textContent = 'Copied to clipboard!';
+                indicator.style.display = 'block';
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 2000);
+            });
+        }
+
+        function downloadValues() {
+            const content = document.getElementById('yamlContent').textContent;
+            const blob = new Blob([content], { type: 'text/yaml' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'recommended-values.yaml';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            const indicator = document.querySelector('.copy-indicator');
+            indicator.textContent = 'Values file downloaded!';
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 2000);
+        }
+
+        function showToast(message) {
+            const indicator = document.querySelector('.copy-indicator');
+            indicator.textContent = message;
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
