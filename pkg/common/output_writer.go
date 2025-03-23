@@ -43,6 +43,7 @@ func printConfigMapSuccess() {
 	fmt.Println("⬇️  To export the report files locally:")
 	fmt.Println("    kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data \"prerequisites-report.html\" }}' > prerequisites-report.html")
 	fmt.Println("    kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data \"recommended-values.yaml\" }}' > recommended-values.yaml")
+	fmt.Println("    kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data \"review-values.html\" }}' > review-values.html")
 	fmt.Println("    kubectl get configmap kubescape-prerequisites-report -n default -o go-template='{{ index .data \"full-cluster-dump.yaml\" }}' > full-cluster-dump.yaml")
 	fmt.Println("")
 	fmt.Println("📋 Open prerequisites-report.html in your browser for details.")
