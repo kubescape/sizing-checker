@@ -55,39 +55,18 @@ func printConfigMapSuccess() {
 	printSeparator()
 }
 
-func WriteToDisk(htmlContent, helmValuesContent, fullDumpContent string, reviewValuesTemplate []byte, storageClasses []string, reportData *ReportData) {
+func WriteToDisk(htmlContent, helmValuesContent, fullDumpContent string, reportData *ReportData) {
 	// 1) Write the HTML report
 	reportPath := filepath.Join(os.TempDir(), "prerequisites-report.html")
 	if err := os.WriteFile(reportPath, []byte(htmlContent), 0644); err != nil {
 		log.Fatalf("Failed to write HTML report to %s: %v", reportPath, err)
 	}
 
-	// 2) Parse and write the review values HTML with actual YAML content
+	// 2) Build and write the review values HTML
+	reviewValuesHTML := BuildReviewValuesHTML(reportData, helmValuesContent)
 	reviewValuesPath := filepath.Join(os.TempDir(), "review-values.html")
-	tmpl, err := template.New("review-values").Parse(string(reviewValuesTemplate))
-	if err != nil {
-		log.Fatalf("Failed to parse review values template: %v", err)
-	}
-
-	// Create a file to write the processed template
-	reviewValuesFile, err := os.Create(reviewValuesPath)
-	if err != nil {
-		log.Fatalf("Failed to create review-values.html at %s: %v", reviewValuesPath, err)
-	}
-	defer reviewValuesFile.Close()
-
-	// Execute the template with the YAML content and storage classes
-	data := struct {
-		RecommendedValues     string
-		StorageClasses        []string
-		PVProvisioningMessage string
-	}{
-		RecommendedValues:     helmValuesContent,
-		StorageClasses:        storageClasses,
-		PVProvisioningMessage: reportData.PVProvisioningMessage,
-	}
-	if err := tmpl.Execute(reviewValuesFile, data); err != nil {
-		log.Fatalf("Failed to execute review values template: %v", err)
+	if err := os.WriteFile(reviewValuesPath, []byte(reviewValuesHTML), 0644); err != nil {
+		log.Fatalf("Failed to write review-values.html to %s: %v", reviewValuesPath, err)
 	}
 
 	// 3) Write the recommended values YAML
@@ -106,7 +85,7 @@ func WriteToDisk(htmlContent, helmValuesContent, fullDumpContent string, reviewV
 	printDiskSuccess(reportPath, valuesPath, dumpPath)
 }
 
-func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, reviewValuesTemplate []byte, storageClasses []string, reportData *ReportData) {
+func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, reportData *ReportData) {
 	// Build in-cluster Kubernetes client configuration
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -119,26 +98,8 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, re
 		log.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
 
-	// Parse the review values template
-	tmpl, err := template.New("review-values").Parse(string(reviewValuesTemplate))
-	if err != nil {
-		log.Fatalf("Could not parse review values template: %v", err)
-	}
-
-	// Execute the template with the YAML content and storage classes
-	var processedReviewValues strings.Builder
-	data := struct {
-		RecommendedValues     string
-		StorageClasses        []string
-		PVProvisioningMessage string
-	}{
-		RecommendedValues:     helmValuesContent,
-		StorageClasses:        storageClasses,
-		PVProvisioningMessage: reportData.PVProvisioningMessage,
-	}
-	if err := tmpl.Execute(&processedReviewValues, data); err != nil {
-		log.Fatalf("Could not execute review values template: %v", err)
-	}
+	// Build the review values HTML
+	reviewValuesHTML := BuildReviewValuesHTML(reportData, helmValuesContent)
 
 	configMapName := "kubescape-prerequisites-report"
 	namespace := "default"
@@ -150,7 +111,7 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, re
 		},
 		Data: map[string]string{
 			"prerequisites-report.html": htmlContent,
-			"review-values.html":        processedReviewValues.String(),
+			"review-values.html":        reviewValuesHTML,
 			"recommended-values.yaml":   helmValuesContent,
 			// "full-cluster-dump.yaml":    fullDumpContent,
 		},
@@ -169,21 +130,45 @@ func WriteToConfigMap(htmlContent, helmValuesContent, fullDumpContent string, re
 	printConfigMapSuccess()
 }
 
+// BuildReviewValuesHTML generates the HTML for the review values page
+func BuildReviewValuesHTML(data *ReportData, helmValuesContent string) string {
+	// Create a FuncMap and include any functions you want to use in your template
+	funcMap := template.FuncMap{
+		"hasPrefix": strings.HasPrefix,
+	}
+
+	// Parse the embedded review values template with FuncMap
+	tmpl, err := template.New("review-values").Funcs(funcMap).Parse(ReviewValuesHTML)
+	if err != nil {
+		return fmt.Sprintf("Error building review values page: %v", err)
+	}
+
+	// Execute the template with the YAML content and storage classes
+	templateData := struct {
+		RecommendedValues     string
+		StorageClasses        []string
+		PVProvisioningMessage string
+	}{
+		RecommendedValues:     helmValuesContent,
+		StorageClasses:        data.StorageClasses,
+		PVProvisioningMessage: data.PVProvisioningMessage,
+	}
+
+	var sb strings.Builder
+	if err := tmpl.Execute(&sb, templateData); err != nil {
+		return fmt.Sprintf("Error rendering review values template: %v", err)
+	}
+	return sb.String()
+}
+
 func GenerateOutput(reportData *ReportData, inCluster bool) {
 	htmlContent := BuildHTMLReport(reportData, PrerequisitesReportHTML)
 	yamlContent := BuildValuesYAML(reportData)
 	fullDumpContent := BuildFullDumpYAML(reportData.FullClusterData)
 
-	// Read the review values template from file
-	reviewValuesTemplate, err := os.ReadFile(TemplatePath)
-	if err != nil {
-		log.Printf("Warning: Could not read review-values.html template from %s: %v", TemplatePath, err)
-		reviewValuesTemplate = []byte("Error: Could not load review values template")
-	}
-
 	if inCluster {
-		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent, reviewValuesTemplate, reportData.StorageClasses, reportData)
+		WriteToConfigMap(htmlContent, yamlContent, fullDumpContent, reportData)
 	} else {
-		WriteToDisk(htmlContent, yamlContent, fullDumpContent, reviewValuesTemplate, reportData.StorageClasses, reportData)
+		WriteToDisk(htmlContent, yamlContent, fullDumpContent, reportData)
 	}
 }
