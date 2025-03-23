@@ -285,7 +285,7 @@
             <select class="storage-select" id="storageConfig" onchange="updateYAML()">
                 <option value="disable">Disable persistence</option>
                 {{range .StorageClasses}}
-                <option value="{{.}}">{{.}}</option>
+                <option value="{{.}}">Use Storage Classes: {{.}}</option>
                 {{end}}
             </select>
         </div>
